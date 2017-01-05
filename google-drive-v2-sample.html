@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <title>get google drive files sample</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="https://apis.google.com/js/client.js"></script>
+    <script src="https://code.jquery.com/jquery-3.1.1.slim.min.js" integrity="sha256-/SIrNqv8h6QGKDuNoLGA4iret+kyesCkHGzVUUV0shc="
+        crossorigin="anonymous"></script>
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u"
+        crossorigin="anonymous">
+    <script>
+        var googleDriveClient,
+            accessToken,
+            nextPageToken,
+            parentId;
+        getGoogleAuth().then(loadGoogleDrive).then(function (gClient) {
+            googleDriveClient = gClient;
+            getFileList().then(function (objFileList) {
+                viewFileList(objFileList);
+            });
+        });
+
+        // load google drive client
+        function loadGoogleDrive() {
+            var p = new Promise(function (resolve, reject) {
+                try {
+                    window.gapi.client.load('drive', 'v2', fncOnDriveApiLoad);
+                } catch (e) {
+                    reject(e);
+                }
+
+                function fncOnDriveApiLoad() {
+                    resolve(window.gapi.client);
+                }
+            });
+            return p;
+        }
+
+        // authorize google
+        function getGoogleAuth() {
+            var objAuthParam = {
+                'client_id': 'your-google-client-id',
+                'scope': ['https://www.googleapis.com/auth/drive'],
+                'immediate': false
+            };
+            var p = new Promise(function (resolve, reject) {
+                window.gapi.load('auth', {
+                    'callback': function () {
+                        window.gapi.auth.authorize(
+                            objAuthParam,
+                            authResult);
+                    }
+                });
+
+                function authResult(objAuthResult) {
+                    if (objAuthResult && !objAuthResult.error) {
+                        accessToken = objAuthResult.access_token;
+                        resolve(accessToken);
+                    } else {
+                        // auth failed.
+                        reject(objAuthResult);
+                    }
+                }
+            });
+            return p;
+        }
+
+        // get drive file list
+        function getFileList(strPageToken, strParentId) {
+            var objParam = {
+                maxResults: 10,
+                orderBy: 'folder,modifiedDate',
+                q: 'trashed=false',
+                fields: 'items(id, title, kind, fileSize, mimeType, lastModifyingUser, modifiedDate, iconLink, owners, folderColorRgb, shared, webViewLink, alternateLink, webContentLink), nextPageToken'
+            };
+            if (strParentId) {
+                objParam.q += ' and ' + '"' + strParentId + '" in parents';
+            }
+            if (strPageToken) {
+                objParam.pageToken = strPageToken;
+            }
+            var p = new Promise(function (resolve, reject) {
+                var objReq = googleDriveClient.drive.files.list(objParam);
+                objReq.execute(function (resp) {
+                    resolve(resp);
+                });
+            });
+            return p;
+        }
+
+        function viewFileList(objFileList) {
+            console.log(objFileList)
+            var arrayFiles = objFileList.items;
+            nextPageToken = objFileList.nextPageToken ? objFileList.nextPageToken : '';
+            for (var i = 0; i < arrayFiles.length; i++) {
+                var file = arrayFiles[i];
+                var filename = $('<td/>').text(file.title);
+                var filesize = $('<td/>').text(file.fileSize ? file.fileSize : '-');
+                var viewLink = file.alternateLink ? $('<a/>').attr('href', file.alternateLink).text('表示') : '<span/>';
+                var fileview = $('<td/>').append(viewLink);
+                var dlLink = file.webContentLink ? $('<a/>').attr('href', file.webContentLink).text('DL') : $('<span/>');
+                var filedownload = $('<td/>').append(dlLink);
+                var $row = $('<tr/>').append(filename).append(filesize).append(fileview).append(filedownload);
+                $row.attr('dblclick', "getDrilldownFile('" + file.mimeType + "','" + file.id + "')");
+                $('.file-list tbody').append($row);
+            }
+        }
+
+        function getDrilldownFile(mime, id) {
+            if (mime === 'application/vnd.google-apps.folder') {
+                clearList();
+                parentId = id;
+                getFileList(null, id).then(function (objFileList) {
+                    viewFileList(objFileList);
+                });
+            }
+        }
+
+        function clearList() {
+            $('.file-list tbody *').remove();
+        }
+
+        function nextPage() {
+            getFileList(nextPageToken, parentId).then(function (objFileList) {
+                viewFileList(objFileList);
+            });;
+        }
+
+    </script>
+</head>
+
+<body>
+    <table class="table table-striped file-list">
+        <thead>
+            <th>ファイル名</th>
+            <th>サイズ</th>
+            <th>表示</th>
+            <th>ダウンロード</th>
+        </thead>
+        <tbody>
+        </tbody>
+    </table>
+    <button type="button" onclick="nextPage();" class="next-page btn btn-primary btn-lg btn-block">次</button>
+</body>
+
+</html>
