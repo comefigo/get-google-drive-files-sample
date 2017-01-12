@@ -5,8 +5,8 @@
 objParamではファイル一覧を取得する際の各種パラメータをオブジェクトで指定しています。  
 指定できるプロパティの一覧は[こちら](https://developers.google.com/drive/v3/reference/files/list)になります。  
 fieldsは戻り値で含めてほしい項目として指定できます。
-```nexPageToken```はpageSizeで指定した数以上にファイルまたはフォルダがあった際に、次ページの一覧を取得する際のトークンになります。  
-```files(id, name, kind...)```は戻り値のfilesプロパティの配下の項目（ファイルのメタ情報の項目）を指定できます。  
+nexPageTokenはpageSizeで指定した数以上にファイルまたはフォルダがあった際に、次ページの一覧を取得する際のトークンになります。  
+files(id, name, kind...)は戻り値のfilesプロパティの配下の項目（ファイルのメタ情報の項目）を指定できます。  
 指定できるファイルのメタ情報は[こちら](https://developers.google.com/drive/v3/reference/files)を参照してください。
 
 ```
